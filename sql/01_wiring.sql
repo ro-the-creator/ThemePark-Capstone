@@ -1,3 +1,6 @@
+-- Run this on a working copy of the raw database, not on the immutable raw file.
+-- Recommended build path: scripts/build_analysis_db.sh
+
 -- 1) Create dim_date
 CREATE TABLE IF NOT EXISTS dim_date (
 date_id INTEGER PRIMARY KEY, -- e.g., 20250701
@@ -6,7 +9,7 @@ day_name TEXT, -- 'Monday', ...
 is_weekend INTEGER, -- 0/1
 season TEXT -- e.g., 'Summer'
 );
--- 2) Insert rows (these match the data in themepark.db)
+-- 2) Insert rows (these match the capstone source data)
 INSERT OR IGNORE INTO dim_date (date_id, date_iso, day_name, is_weekend, season)
 VALUES
 (20250701, '2025-07-01', 'Tuesday', 0, 'Summer'),
@@ -23,8 +26,7 @@ UPDATE fact_visits
 SET date_id = CAST(STRFTIME('%Y%m%d', visit_date) AS INTEGER);
 -- 4) (Nice-to-have) Index the column you’ll use in joins for speed:
 CREATE INDEX IF NOT EXISTS idx_fact_visits_date_id ON fact_visits(date_id);
--- 5) Quick check: Are there any visits that don’t match a dim_date row? Should be
-ZERO.
+-- 5) Quick check: Are there any visits that don’t match a dim_date row? Should be ZERO.
 SELECT COUNT(*) AS visits_without_date
 FROM fact_visits v
 LEFT JOIN dim_date d ON d.date_id = v.date_id

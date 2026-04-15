@@ -6,6 +6,26 @@ An exploratory analysis project for the theme park Supernova, which has been exp
 
 ![](https://imhonyc.com/wp-content/uploads/2023/12/carnival-1492099_1280.jpg)
 
+## Reproducible Run Path
+
+This repo is organized around an immutable raw SQLite file and a generated working database for analysis.
+
+- `data/themepark-raw.db`: untouched source database
+- `data/themepark_analysis.db`: generated working copy for setup, views, and analysis
+- `sql/01_wiring.sql`: stateful setup for `dim_date` and `fact_visits.date_id`
+- `sql/02_cleaning_feature_pipeline.sql`: canonical non-destructive cleaning, audit, and feature-engineering view layer
+- `sql/03_eda.sql` and `sql/04_ctes_windows.sql`: downstream analysis queries that read from the canonical view layer
+- `notebooks/sql_figures.ipynb`: visualization notebook that connects to `data/themepark_analysis.db`
+
+Quickstart from the repo root:
+
+```bash
+./scripts/build_analysis_db.sh
+./scripts/validate_pipeline.sh
+sqlite3 data/themepark_analysis.db < sql/03_eda.sql
+sqlite3 data/themepark_analysis.db < sql/04_ctes_windows.sql
+```
+
 ## Project Overview
 
 #### Project Analyst
@@ -109,7 +129,7 @@ There are several benefits to star schemas, especially in the context of the Sup
 ### Wire Dimension
 
 <p align=center>
-To gain better insight into the dates provided in the fact_visits table, creating a new dimensional table must be done. This new table, dim_dates, provides information like the day of the week, the season, and whether or not it is a weekend day. Although subtle, this information will aid greatly in aggregating data for deeper analysis later.
+To gain better insight into the dates provided in the fact_visits table, creating a new dimensional table must be done. This new table, dim_dates, provides information like the day of the week, the season, and whether or not it is a weekend day. Although subtle, this information will aid greatly in aggregating data for deeper analysis later. In the final capstone workflow, this step is run on the generated working database, not on the immutable raw file.
 </p>
 
 <p align=center> We set up a new primary key, date_id, that can be used to join tables with fact_visits easily. The ID is simply the full date from the fact_visits table, which can easily be converted using the following function:
@@ -134,6 +154,8 @@ In the end, we get a simple yet effective table.
 </p>
 
 ## SQL Cleaning & Analysis
+
+> Final architecture note: [sql/01_wiring.sql](sql/01_wiring.sql) remains the setup step, [sql/02_cleaning_feature_pipeline.sql](sql/02_cleaning_feature_pipeline.sql) is the single canonical transformation layer, and downstream analysis should read from the pipeline views on `data/themepark_analysis.db`.
 
 ### Cleaning
 
@@ -212,6 +234,8 @@ For filling in NULLs, the following steps were done to fill them in:
 <p align=center>
 Overall, only two duplicate rows were dropped in dim_attractions.
 </p>
+
+> Current implementation note: the final capstone pipeline does not delete duplicate attraction rows from the raw database. It resolves them non-destructively through canonical cleaned views.
   
 #### Feature Engineering
 
@@ -242,6 +266,10 @@ Feature engineering consists of creating new views from the existing columns in 
 4. Frequency of promo code use, and the total revenue generated from in-park purchases when those promo codes are used. Good for checking if promo codes are   leading to profits
   - SUMMER25 promo code is generating revenue, total of $840.49.
   - VIPDAY has similar usage to no promo code, but generating significantly less revenue.
+
+> Validation note: the zero-orphan, wait-bucket, guest-segment, and promo-revenue findings were reproduced from the untouched raw database by building a working copy, running [sql/01_wiring.sql](sql/01_wiring.sql), and then loading [sql/02_cleaning_feature_pipeline.sql](sql/02_cleaning_feature_pipeline.sql).
+
+> Difference from the earlier mutated database state: the raw-database workflow should now be treated as the source of truth for reproducibility. Any claim produced from an older pre-mutated database file should be considered historical unless it has been revalidated through the current build path.
 
 #### CTEs & Windows
 
