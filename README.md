@@ -1,4 +1,4 @@
-# Module 3 Final Project - Supernova Theme Park Analytics
+# Capstone Project - Supernova Theme Park Analytics
 
 <p align=center>
 An exploratory analysis project for the theme park Supernova, which has been experiencing uneven guest satisfaction scores in recent months. Issues such as long wait times, inconsistent ride availability, and overcrowding are among the biggest factors contributing to poor satisfaction scores. With a goal of aligning operational efficiency, guest experience, and targeted marketing strategies throughout all departments of the park, this project aims to explore the nuances of park dissatisfaction and recommendations to improve these issues.
@@ -15,9 +15,9 @@ This repo is organized around an immutable raw SQLite file and a generated worki
 - `sql/01_wiring.sql`: stateful setup for `dim_date` and `fact_visits.date_id`
 - `sql/02_cleaning_feature_pipeline.sql`: canonical non-destructive cleaning, audit, and feature-engineering view layer
 - `sql/03_eda.sql` and `sql/04_ctes_windows.sql`: downstream analysis queries that read from the canonical view layer
-- `notebooks/sql_figures.ipynb`: visualization notebook that connects to `data/themepark_analysis.db`
+- `notebooks/analysis.ipynb`: visualization notebook that connects to `data/themepark_analysis.db`
 
-Quickstart from the repo root:
+#### Quickstart from the repo root:
 
 ```bash
 ./scripts/build_analysis_db.sh
@@ -25,6 +25,10 @@ Quickstart from the repo root:
 sqlite3 data/themepark_analysis.db < sql/03_eda.sql
 sqlite3 data/themepark_analysis.db < sql/04_ctes_windows.sql
 ```
+
+#### Folder documentation:
+- [scripts/README.md](scripts/README.md): details for build and validation script usage
+- [sql/README.md](sql/README.md): details for SQL script purpose and execution order
 
 ## Project Overview
 
@@ -36,11 +40,11 @@ sqlite3 data/themepark_analysis.db < sql/04_ctes_windows.sql
   - [GitHub](https://github.com/ro-the-creator)
 
 #### Primary Stakeholder
-- Dylon Husk - Park General Manager
+- Park General Manager
 
 #### Supporting Stakeholders
-- Cleff Heyzoz - Operations Director for Staffing & Queues
-- Darren Muffett - Marketing Director for Promotions & Ticket Mix
+- Operations Director for Staffing & Queues
+- Marketing Director for Promotions & Ticket Mix
 
 ### Business Problem
 
@@ -50,21 +54,13 @@ Supernova theme park has been facing uneven guest satisfaction scores and fluctu
 
 <br>
 
-## Repo Navigation
+## Table of Contents
 
-1. [Database Management](#Database-Management)
-   - [Schema](#Schema)
-     - [Benefits to Schema](#Benefits-to-Star-Schema)
-   - [Wire Dimension](#Wire-Dimension)
-2. [SQL Cleaning & Analysis](#SQL-Cleaning-&-Analysis)
-   - [Cleaning](#Cleaning)
-     - [Feature Engineering](#Feature-Engineering)
-     - [CTEs & Windows](#CTEs-&-Windows)
-3. [Visualizations in Python](#Python)
-   - [Visualizations](#Visualizations)
-4. [Findings & Recommendations](#Findings)
-   - [Insights & Recommendations](#Insights-&-Recommendations)
-   - [Ethics & Biases](#Ethics-&-Biases)
+1. [Database Management](#database-management)
+2. [SQL Cleaning & Analysis](#sql-cleaning--analysis)
+3. [Python](#python)
+4. [Findings](#findings)
+5. [Ethics & Biases](#ethics--biases)
 
 ## Database Management
 
@@ -100,7 +96,7 @@ In the diagram above, the dimensional tables provide referential information to 
 |date_id|dim_date|fact_visits|
 |guest_id|dim_guest|fact_visits|
 |ticket_type_id|dim_ticket|fact_visits|
-|ride_event_id|fact_ride_event|None|
+|ride_event_id|fact_ride_events|None|
 |purchase_id|fact_purchases|None|
 </div>
 
@@ -129,7 +125,7 @@ There are several benefits to star schemas, especially in the context of the Sup
 ### Wire Dimension
 
 <p align=center>
-To gain better insight into the dates provided in the fact_visits table, creating a new dimensional table must be done. This new table, dim_dates, provides information like the day of the week, the season, and whether or not it is a weekend day. Although subtle, this information will aid greatly in aggregating data for deeper analysis later. In the final capstone workflow, this step is run on the generated working database, not on the immutable raw file.
+To gain better insight into the dates provided in the fact_visits table, creating a new dimensional table must be done. This new table, dim_date, provides information like the day of the week, the season, and whether or not it is a weekend day. Although subtle, this information will aid greatly in aggregating data for deeper analysis later. In the final capstone workflow, this step is run on the generated working database, not on the immutable raw file.
 </p>
 
 <p align=center> We set up a new primary key, date_id, that can be used to join tables with fact_visits easily. The ID is simply the full date from the fact_visits table, which can easily be converted using the following function:
@@ -219,17 +215,17 @@ There were no orphans!
 <br>
 
 <p align=center>
-For filling in NULLs, the following steps were done to fill them in:
+For filling in NULLs, the following steps were completed:
 </p>
 
-- Filled in NULL rows in dim_guest: marketing_opt_in_clean with ‘N’. Assumption that NULL row means no.
-- Filled in fact_purchases: amount_dollar with ‘Unknown’. Cannot deduct the price of the item from the current data. Need the data from those rows, can’t drop them.
+- Filled in NULL rows in dim_guest: marketing_opt_in_clean with 'N'. Assumption that NULL row means no.
+- Filled in fact_purchases: amount_dollar with 'Unknown'. Cannot deduct the price of the item from the current data. Need the data from those rows, cannot drop them.
 - Filled in fact_ride_events: wait_minutes & photo_purchase.
 - Filled wait_minutes with 0, assuming that null row means there was no wait time.
 - Filled in photo_purchase with N for No, assuming no entry means no photo purchase.
 - Filled in fact_visits: spend_dollar & promotion_code_clean
-- Filled spend_dollar with ‘Unknown’, Cannot deduct price from ticket+promo.
-- Filled promotion_code_clean with ‘None’. Assumption that no entry means no promo code.
+- Filled spend_dollar with 'Unknown', cannot deduct price from ticket+promo.
+- Filled promotion_code_clean with 'None'. Assumption that no entry means no promo code.
 
 <p align=center>
 Overall, only two duplicate rows were dropped in dim_attractions.
@@ -261,11 +257,11 @@ Feature engineering consists of creating new views from the existing columns in 
 
 </div>
 
-3. Finding out the average spend in dollars per customer, and categorizing them as Low, Regular, or High Spenders.
+3. Finding out the average spend in dollars per customer, and categorizing them as Low, Regular, or Premium Spenders.
   - There were 3 Low, 4 Regular, and 3 Premium.
 4. Frequency of promo code use, and the total revenue generated from in-park purchases when those promo codes are used. Good for checking if promo codes are   leading to profits
   - SUMMER25 promo code is generating revenue, total of $840.49.
-  - VIPDAY has similar usage to no promo code, but generating significantly less revenue.
+  - VIPDAY has similar usage to no promo code, but generates significantly less revenue.
 
 > Validation note: the zero-orphan, wait-bucket, guest-segment, and promo-revenue findings were reproduced from the untouched raw database by building a working copy, running [sql/01_wiring.sql](sql/01_wiring.sql), and then loading [sql/02_cleaning_feature_pipeline.sql](sql/02_cleaning_feature_pipeline.sql).
 
@@ -321,7 +317,7 @@ In cleaning, analyzing, and providing recommendations with this dataset, there w
 </p>
 
 <p align=center>
-The only major hinderance that could not be fixed with limited time was renumerating the attraction_id column in dim_attractions, which turned inconsistent due to dropping two duplicate rows. While I was able to reorient the attraction_id values that were dropped in the fact_ride_events table, I was unable to renumerate the original Primary Key in dim_attractions.
+The only major hindrance that could not be fixed with limited time was re-numbering the attraction_id column in dim_attractions, which turned inconsistent due to dropping two duplicate rows. While I was able to reorient the attraction_id values that were dropped in the fact_ride_events table, I was unable to re-number the original Primary Key in dim_attractions.
 </p>
 
 <p align=center>
